@@ -1,6 +1,8 @@
-package spark // Change to your directory name
+package spark
 
 import org.apache.spark.sql.SparkSession
+import org.apache.spark.sql.functions._
+import org.apache.spark.sql.types._
 import requests._
 
 object read_energy_api {
@@ -19,10 +21,46 @@ object read_energy_api {
       val apiUrl = "https://api.octopus.energy/v1/products/"
       val response = get(apiUrl)
       val total = response.text()
-      val dfFromText = spark.read.json(Seq(total).toDS)
 
-      // Extract the "results" array
-      val resultsDF = dfFromText.select(explode($"results").alias("result"))
+      // Define schema explicitly
+      val schema = StructType(Seq(
+        StructField("count", IntegerType, true),
+        StructField("next", StringType, true),
+        StructField("previous", StringType, true),
+        StructField("results", ArrayType(
+          StructType(Seq(
+            StructField("code", StringType, true),
+            StructField("direction", StringType, true),
+            StructField("full_name", StringType, true),
+            StructField("display_name", StringType, true),
+            StructField("description", StringType, true),
+            StructField("is_variable", BooleanType, true),
+            StructField("is_green", BooleanType, true),
+            StructField("is_tracker", BooleanType, true),
+            StructField("is_prepay", BooleanType, true),
+            StructField("is_business", BooleanType, true),
+            StructField("is_restricted", BooleanType, true),
+            StructField("term", StringType, true),
+            StructField("available_from", StringType, true),
+            StructField("available_to", StringType, true),
+            StructField("links", ArrayType(
+              StructType(Seq(
+                StructField("href", StringType, true),
+                StructField("method", StringType, true),
+                StructField("rel", StringType, true)
+              ))
+            ), true),
+            StructField("brand", StringType, true)
+          ))
+        ), true)
+      ))
+
+      // Parse JSON with schema
+      val dfFromText = spark.read.schema(schema).json(Seq(total).toDS)
+
+      // Flatten the results array
+      val resultsDF = dfFromText
+        .selectExpr("inline(results) as result")
         .select(
           $"result.code".alias("code"),
           $"result.direction".alias("direction"),
@@ -65,4 +103,4 @@ object read_energy_api {
 }
 
 //mvn package
-//spark-submit --master local --packages "org.apache.spark:spark-sql-kafka-0-10_2.11:2.4.7","com.lihaoyi:requests_2.11:0.7.1" --class spark.read_energy_api target/energy_api-1.0-SNAPSHOT.jar
+//spark-submit --master local --packages "org.apache.spark:spark-sql-kafka-0-10_2.11:2.4.7","com.lihaoyi:requests_2.11:0.7.1" --class spark.sop_read_api target/EnergyAPIReader-1.0-SNAPSHOT.jar
