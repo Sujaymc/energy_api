@@ -1,7 +1,6 @@
 package spark // Change to your directory name
 
 import org.apache.spark.sql.SparkSession
-import org.apache.spark.sql.functions._
 import requests._
 
 object read_energy_api {
@@ -66,4 +65,4 @@ object read_energy_api {
 }
 
 //mvn package
-//spark-submit --master local --packages "org.apache.spark:spark-sql-kafka-0-10_2.11:2.4.7","com.lihaoyi:requests_2.11:0.7.1" --class spark.sop_read_api target/ElectricityAPIReader-1.0-SNAPSHOT.jar
+//spark-submit --master local --packages "org.apache.spark:spark-sql-kafka-0-10_2.11:2.4.7","com.lihaoyi:requests_2.11:0.7.1" --class spark.read_energy_api target/energy_api-1.0-SNAPSHOT.jar
