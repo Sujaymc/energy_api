@@ -18,7 +18,7 @@ object read_energy_api {
       import spark.implicits._
 
       // API details
-      val apiUrl = "https://developer.nrel.gov/api/alt-fuel-stations/v1.json?api_key=YOUR_API_KEY"
+      val apiUrl = "https://developer.nrel.gov/api/alt-fuel-stations/v1.json?api_key=QadijL96MjkrLZoz3JJmisWblq4fdFv0fbTC7cA5"
       val response = get(apiUrl)
       val jsonResponse = response.text()
 
