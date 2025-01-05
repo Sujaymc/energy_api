@@ -22,13 +22,16 @@ object ReadEnergyAPI {
       val response = get(apiUrl)
       val total = response.text()
 
-      // Define schema explicitly
+      // Define schema explicitly for the full structure
       val schema = StructType(Seq(
         StructField("station_locator_url", StringType, true),
         StructField("total_results", IntegerType, true),
         StructField("station_counts", StructType(Seq(
           StructField("total", IntegerType, true),
           StructField("fuels", StructType(Seq(
+            StructField("E85", StructType(Seq(
+              StructField("total", IntegerType, true)
+            ))),
             StructField("ELEC", StructType(Seq(
               StructField("total", IntegerType, true),
               StructField("stations", StructType(Seq(
@@ -39,13 +42,22 @@ object ReadEnergyAPI {
         ))),
         StructField("fuel_stations", ArrayType(
           StructType(Seq(
-            StructField("station_name", StringType, true),
+            StructField("access_code", StringType, true),
+            StructField("access_days_time", StringType, true),
             StructField("fuel_type_code", StringType, true),
+            StructField("station_name", StringType, true),
             StructField("latitude", DoubleType, true),
             StructField("longitude", DoubleType, true),
             StructField("city", StringType, true),
             StructField("state", StringType, true),
-            StructField("street_address", StringType, true)
+            StructField("street_address", StringType, true),
+            StructField("ev_connector_types", ArrayType(StringType, true), true),
+            StructField("ev_network", StringType, true),
+            StructField("ev_network_web", StringType, true),
+            StructField("ev_pricing", StringType, true),
+            StructField("ev_renewable_source", StringType, true),
+            StructField("ev_workplace_charging", BooleanType, true)
+            // Add other fields if needed
           ))
         ), true)
       ))
@@ -55,7 +67,7 @@ object ReadEnergyAPI {
 
       // Flatten the fuel_stations array
       val fuelStationsDF = dfFromText
-        .selectExpr("inline(fuel_stations) as station")
+        .select(explode($"fuel_stations").alias("station"))  // Flatten the array
         .select(
           $"station.station_name".alias("station_name"),
           $"station.fuel_type_code".alias("fuel_type_code"),
@@ -63,7 +75,13 @@ object ReadEnergyAPI {
           $"station.longitude".alias("longitude"),
           $"station.city".alias("city"),
           $"station.state".alias("state"),
-          $"station.street_address".alias("street_address")
+          $"station.street_address".alias("street_address"),
+          $"station.ev_connector_types".alias("ev_connector_types"),
+          $"station.ev_network".alias("ev_network"),
+          $"station.ev_network_web".alias("ev_network_web"),
+          $"station.ev_pricing".alias("ev_pricing"),
+          $"station.ev_renewable_source".alias("ev_renewable_source"),
+          $"station.ev_workplace_charging".alias("ev_workplace_charging")
         )
 
       // Show a few rows for debugging
