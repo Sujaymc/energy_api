@@ -5,12 +5,12 @@ import org.apache.spark.sql.functions._
 import org.apache.spark.sql.types._
 import requests._
 
-object read_energy_api {
+object ReadEnergyAPI {
 
   def main(args: Array[String]): Unit = {
     // Start Spark session
     val spark = SparkSession.builder()
-      .appName("Energy Product API Reader")
+      .appName("Alt Fuel Stations API Reader")
       .master("local[*]")
       .getOrCreate()
 
@@ -18,39 +18,34 @@ object read_energy_api {
       import spark.implicits._
 
       // API details
-      val apiUrl = "https://api.octopus.energy/v1/products/"
+      val apiUrl = "https://developer.nrel.gov/api/alt-fuel-stations/v1.json?QadijL96MjkrLZoz3JJmisWblq4fdFv0fbTC7cA57"
       val response = get(apiUrl)
       val total = response.text()
 
       // Define schema explicitly
       val schema = StructType(Seq(
-        StructField("count", IntegerType, true),
-        StructField("next", StringType, true),
-        StructField("previous", StringType, true),
-        StructField("results", ArrayType(
+        StructField("station_locator_url", StringType, true),
+        StructField("total_results", IntegerType, true),
+        StructField("station_counts", StructType(Seq(
+          StructField("total", IntegerType, true),
+          StructField("fuels", StructType(Seq(
+            StructField("ELEC", StructType(Seq(
+              StructField("total", IntegerType, true),
+              StructField("stations", StructType(Seq(
+                StructField("total", IntegerType, true)
+              )))
+            )))
+          )))
+        ))),
+        StructField("fuel_stations", ArrayType(
           StructType(Seq(
-            StructField("code", StringType, true),
-            StructField("direction", StringType, true),
-            StructField("full_name", StringType, true),
-            StructField("display_name", StringType, true),
-            StructField("description", StringType, true),
-            StructField("is_variable", BooleanType, true),
-            StructField("is_green", BooleanType, true),
-            StructField("is_tracker", BooleanType, true),
-            StructField("is_prepay", BooleanType, true),
-            StructField("is_business", BooleanType, true),
-            StructField("is_restricted", BooleanType, true),
-            StructField("term", StringType, true),
-            StructField("available_from", StringType, true),
-            StructField("available_to", StringType, true),
-            StructField("links", ArrayType(
-              StructType(Seq(
-                StructField("href", StringType, true),
-                StructField("method", StringType, true),
-                StructField("rel", StringType, true)
-              ))
-            ), true),
-            StructField("brand", StringType, true)
+            StructField("station_name", StringType, true),
+            StructField("fuel_type_code", StringType, true),
+            StructField("latitude", DoubleType, true),
+            StructField("longitude", DoubleType, true),
+            StructField("city", StringType, true),
+            StructField("state", StringType, true),
+            StructField("street_address", StringType, true)
           ))
         ), true)
       ))
@@ -58,37 +53,28 @@ object read_energy_api {
       // Parse JSON with schema
       val dfFromText = spark.read.schema(schema).json(Seq(total).toDS)
 
-      // Flatten the results array
-      val resultsDF = dfFromText
-        .selectExpr("inline(results) as result")
+      // Flatten the fuel_stations array
+      val fuelStationsDF = dfFromText
+        .selectExpr("inline(fuel_stations) as station")
         .select(
-          $"result.code".alias("code"),
-          $"result.direction".alias("direction"),
-          $"result.full_name".alias("full_name"),
-          $"result.display_name".alias("display_name"),
-          $"result.description".alias("description"),
-          $"result.is_variable".alias("is_variable"),
-          $"result.is_green".alias("is_green"),
-          $"result.is_tracker".alias("is_tracker"),
-          $"result.is_prepay".alias("is_prepay"),
-          $"result.is_business".alias("is_business"),
-          $"result.is_restricted".alias("is_restricted"),
-          $"result.term".alias("term"),
-          $"result.available_from".alias("available_from"),
-          $"result.available_to".alias("available_to"),
-          $"result.links".alias("links"),
-          $"result.brand".alias("brand")
+          $"station.station_name".alias("station_name"),
+          $"station.fuel_type_code".alias("fuel_type_code"),
+          $"station.latitude".alias("latitude"),
+          $"station.longitude".alias("longitude"),
+          $"station.city".alias("city"),
+          $"station.state".alias("state"),
+          $"station.street_address".alias("street_address")
         )
 
       // Show a few rows for debugging
-      resultsDF.show(5, truncate = false)
+      fuelStationsDF.show(5, truncate = false)
 
       // Kafka server and topic name assignment
       val kafkaServer: String = "ip-172-31-8-235.eu-west-2.compute.internal:9092"
       val topicSampleName: String = "sujay_topic1" // Your Kafka topic name
 
       // Write data to Kafka
-      resultsDF.selectExpr("CAST(code AS STRING) AS key", "to_json(struct(*)) AS value")
+      fuelStationsDF.selectExpr("CAST(station_name AS STRING) AS key", "to_json(struct(*)) AS value")
         .selectExpr("CAST(key AS STRING)", "CAST(value AS STRING)")
         .write
         .format("kafka")
@@ -103,4 +89,4 @@ object read_energy_api {
 }
 
 //mvn package
-//spark-submit --master local --packages "org.apache.spark:spark-sql-kafka-0-10_2.11:2.4.7","com.lihaoyi:requests_2.11:0.7.1" --class spark.sop_read_api target/EnergyAPIReader-1.0-SNAPSHOT.jar
+//spark-submit --master local --packages "org.apache.spark:spark-sql-kafka-0-10_2.11:2.4.7","com.lihaoyi:requests_2.11:0.7.1" --class spark.ReadEnergyAPI target/EnergyAPIReader-1.0-SNAPSHOT.jar
