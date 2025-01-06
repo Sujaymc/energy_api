@@ -71,7 +71,8 @@ object read_energy_api {
 
 
 
-      val fuelStationsDF = dfFromText.select($"fuel_stations", $"station.station_name")
+      val fuelStationsDF = dfFromText.select($"station_locator_url", $"total_results")// Select only the columns you need
+
       // Show a few rows for debugging
       fuelStationsDF.show(5, truncate = false)
 
