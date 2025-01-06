@@ -80,12 +80,12 @@ object read_energy_api {
       val topicSampleName: String = "sujay_topic1" // Your Kafka topic name
 
       // Write data to Kafka
-      fuelStationsDF.selectExpr("CAST(station_name AS STRING) AS key", "to_json(struct(*)) AS value")
-        .write
-        .format("kafka")
-        .option("kafka.bootstrap.servers", kafkaServer)
-        .option("topic", topicSampleName)
-        .save()
+//      fuelStationsDF.selectExpr("CAST(station_name AS STRING) AS key", "to_json(struct(*)) AS value")
+//        .write
+//        .format("kafka")
+//        .option("kafka.bootstrap.servers", kafkaServer)
+//        .option("topic", topicSampleName)
+//        .save()
 
       println("Message is loaded to Kafka topic")
       Thread.sleep(10000) // Wait for 10 seconds before making the next call
