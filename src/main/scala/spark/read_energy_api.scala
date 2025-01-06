@@ -71,7 +71,7 @@ object read_energy_api {
 
 
 
-      val fuelStationsDF = dfFromText.select($"fuel_stations"), $"station.station_name")
+      val fuelStationsDF = dfFromText.select($"fuel_stations", $"station.station_name")
       // Show a few rows for debugging
       fuelStationsDF.show(5, truncate = false)
 
